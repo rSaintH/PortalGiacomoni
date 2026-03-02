@@ -1,0 +1,268 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 210 20% 98%;
+    --foreground: 220 30% 15%;
+    --card: 0 0% 100%;
+    --card-foreground: 220 30% 15%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 220 30% 15%;
+    --primary: 217 91% 40%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 214 32% 91%;
+    --secondary-foreground: 220 30% 20%;
+    --muted: 214 32% 95%;
+    --muted-foreground: 215 16% 47%;
+    --accent: 217 91% 95%;
+    --accent-foreground: 217 91% 30%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+    --success: 142 71% 45%;
+    --success-foreground: 0 0% 100%;
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 10%;
+    --info: 199 89% 48%;
+    --info-foreground: 0 0% 100%;
+    --status-danger: 0 72% 51%;
+    --status-danger-bg: 0 72% 96%;
+    --status-danger-border: 0 72% 85%;
+    --status-warning: 38 92% 50%;
+    --status-warning-bg: 38 92% 95%;
+    --status-warning-border: 38 92% 80%;
+    --status-success: 142 71% 45%;
+    --status-success-bg: 142 71% 95%;
+    --status-success-border: 142 71% 80%;
+    --status-neutral: 215 16% 47%;
+    --status-neutral-bg: 214 32% 95%;
+    --status-neutral-border: 214 32% 85%;
+    --border: 214 32% 91%;
+    --input: 214 32% 91%;
+    --ring: 217 91% 40%;
+    --radius: 0.5rem;
+    --sidebar-background: 220 30% 15%;
+    --sidebar-foreground: 214 32% 91%;
+    --sidebar-primary: 217 91% 60%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 220 30% 20%;
+    --sidebar-accent-foreground: 214 32% 91%;
+    --sidebar-border: 220 30% 25%;
+    --sidebar-ring: 217 91% 60%;
+    --sidebar-muted: 220 15% 30%;
+    --chart-1: 217 91% 40%;
+    --chart-2: 142 71% 45%;
+    --chart-3: 38 92% 50%;
+    --chart-4: 0 72% 51%;
+    --chart-5: 199 89% 48%;
+
+    --priority-high: 0 72% 51%;
+    --priority-medium: 38 92% 50%;
+    --priority-low: 142 71% 45%;
+
+    --status-open: 217 91% 40%;
+    --status-progress: 38 92% 50%;
+    --status-waiting: 280 60% 50%;
+    --status-done: 142 71% 45%;
+    --status-cancelled: 215 16% 47%;
+  }
+
+  .dark {
+    --background: 215 28% 7%;
+    --foreground: 213 27% 93%;
+    --card: 216 18% 11%;
+    --card-foreground: 213 27% 93%;
+    --popover: 216 18% 11%;
+    --popover-foreground: 213 27% 93%;
+    --primary: 212 100% 67%;
+    --primary-foreground: 215 28% 7%;
+    --secondary: 215 16% 15%;
+    --secondary-foreground: 213 14% 82%;
+    --muted: 215 16% 15%;
+    --muted-foreground: 212 9% 58%;
+    --accent: 215 16% 15%;
+    --accent-foreground: 212 100% 73%;
+    --destructive: 2 92% 63%;
+    --destructive-foreground: 0 0% 100%;
+    --success: 127 52% 49%;
+    --success-foreground: 0 0% 100%;
+    --warning: 39 73% 48%;
+    --warning-foreground: 0 0% 10%;
+    --info: 212 100% 67%;
+    --info-foreground: 0 0% 100%;
+    --status-danger: 2 92% 63%;
+    --status-danger-bg: 2 92% 12%;
+    --status-danger-border: 2 92% 28%;
+    --status-warning: 39 73% 48%;
+    --status-warning-bg: 39 73% 12%;
+    --status-warning-border: 39 73% 30%;
+    --status-success: 127 52% 49%;
+    --status-success-bg: 127 52% 12%;
+    --status-success-border: 127 52% 28%;
+    --status-neutral: 212 9% 58%;
+    --status-neutral-bg: 215 16% 15%;
+    --status-neutral-border: 215 13% 25%;
+    --border: 215 13% 21%;
+    --input: 215 13% 21%;
+    --ring: 212 100% 67%;
+    --sidebar-background: 215 28% 4%;
+    --sidebar-foreground: 213 14% 82%;
+    --sidebar-primary: 212 100% 67%;
+    --sidebar-primary-foreground: 215 28% 7%;
+    --sidebar-accent: 215 28% 10%;
+    --sidebar-accent-foreground: 213 27% 93%;
+    --sidebar-border: 215 13% 16%;
+    --sidebar-ring: 212 100% 67%;
+    --sidebar-muted: 215 16% 25%;
+    --chart-1: 212 100% 67%;
+    --chart-2: 127 52% 49%;
+    --chart-3: 39 73% 48%;
+    --chart-4: 2 92% 63%;
+    --chart-5: 280 65% 68%;
+
+    --priority-high: 2 92% 63%;
+    --priority-medium: 39 73% 48%;
+    --priority-low: 127 52% 49%;
+
+    --status-open: 212 100% 67%;
+    --status-progress: 39 73% 48%;
+    --status-waiting: 280 65% 68%;
+    --status-done: 127 52% 49%;
+    --status-cancelled: 212 9% 58%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-semibold tracking-tight;
+  }
+}
+
+@layer utilities {
+  .priority-alta {
+    @apply text-white;
+    background-color: hsl(var(--priority-high));
+  }
+  .priority-media {
+    @apply text-white;
+    background-color: hsl(var(--priority-medium));
+  }
+  .priority-baixa {
+    @apply text-white;
+    background-color: hsl(var(--priority-low));
+  }
+}
+
+/* No shadows mode */
+.no-shadows *,
+.no-shadows *::before,
+.no-shadows *::after {
+  box-shadow: none !important;
+  text-shadow: none !important;
+}
+
+/* TipTap editor list styles */
+.ProseMirror ul {
+  list-style-type: disc;
+  padding-left: 1.5rem;
+  margin: 0.5rem 0;
+}
+
+.ProseMirror ol {
+  list-style-type: decimal;
+  padding-left: 1.5rem;
+  margin: 0.5rem 0;
+}
+
+.ProseMirror ul li,
+.ProseMirror ol li {
+  margin: 0.25rem 0;
+}
+
+.ProseMirror ul ul {
+  list-style-type: circle;
+}
+
+.ProseMirror ul ul ul {
+  list-style-type: square;
+}
+
+/* A4 page simulation for POP viewer (screen) */
+.pop-a4-document {
+  position: relative;
+}
+
+/* Print styles for POP viewer */
+@media print {
+  @page {
+    size: A4;
+    margin: 20mm;
+  }
+
+  html, body {
+    background: white !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  .print\:hidden {
+    display: none !important;
+  }
+
+  .print\:py-0 {
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+  }
+
+  .print\:px-0 {
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+  }
+
+  .print\:shadow-none {
+    box-shadow: none !important;
+  }
+
+  .print\:rounded-none {
+    border-radius: 0 !important;
+  }
+
+  .pop-a4-document {
+    width: 100% !important;
+    max-width: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+  }
+
+  .pop-a4-document h1,
+  .pop-a4-document h2,
+  .pop-a4-document h3 {
+    break-after: avoid;
+  }
+
+  .pop-a4-document img {
+    break-inside: avoid;
+  }
+
+  .pop-a4-document ul,
+  .pop-a4-document ol {
+    break-inside: avoid-page;
+  }
+
+  .pop-a4-document li {
+    break-inside: avoid;
+  }
+}

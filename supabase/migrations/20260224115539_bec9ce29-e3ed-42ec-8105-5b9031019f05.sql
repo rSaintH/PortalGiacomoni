@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX idx_clients_cnpj_unique ON public.clients (cnpj) WHERE cnpj IS NOT NULL AND cnpj != '';

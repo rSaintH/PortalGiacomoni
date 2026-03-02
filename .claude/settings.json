@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(xargs grep -l \"document\")",
+      "Bash(xargs grep -l \"CREATE TABLE.*tags\")",
+      "Bash(grep -l \"sector_id\" supabase/migrations/*.sql)",
+      "Bash(grep -l \"sector_id\" \"c:\\\\Users\\\\mathe\\\\Downloads\\\\Office Flow \\(3\\)/supabase/migrations/\"*.sql)",
+      "Bash(cat \"/c/Users/mathe/Downloads/Fator R Flow \\(2\\)/.env\")",
+      "Bash(head -100 \"/c/Users/mathe/Downloads/Fator R Flow \\(2\\)/src/App.tsx\")",
+      "Bash(cat \"/c/Users/mathe/Downloads/Fator R Flow \\(2\\)/electron/main.cjs\")",
+      "Bash(cat \"/c/Users/mathe/Downloads/Fator R Flow \\(2\\)/src/contexts/AuthContext.tsx\")",
+      "Bash(head -200 \"/c/Users/mathe/Downloads/Fator R Flow \\(2\\)/README.md\")",
+      "Bash(cat \"/c/Users/mathe/Downloads/Fator R Flow \\(2\\)/src/contexts/FatorRContext.tsx\")"
+    ],
+    "additionalDirectories": [
+      "c:\\Users\\mathe\\OneDrive\\Área de Trabalho\\SistemasGiacomoni"
+    ]
+  }
+}

@@ -1,0 +1,48 @@
+
+-- Add per-month status and responsible user columns
+ALTER TABLE public.reinf_entries
+  ADD COLUMN status_mes1 text NOT NULL DEFAULT 'pendente_contabil',
+  ADD COLUMN status_mes2 text NOT NULL DEFAULT 'pendente_contabil',
+  ADD COLUMN status_mes3 text NOT NULL DEFAULT 'pendente_contabil',
+  ADD COLUMN contabil_usuario_id_mes1 uuid,
+  ADD COLUMN contabil_preenchido_em_mes1 timestamptz,
+  ADD COLUMN dp_usuario_id_mes1 uuid,
+  ADD COLUMN dp_aprovado_em_mes1 timestamptz,
+  ADD COLUMN fiscal_usuario_id_mes1 uuid,
+  ADD COLUMN fiscal_enviado_em_mes1 timestamptz,
+  ADD COLUMN contabil_usuario_id_mes2 uuid,
+  ADD COLUMN contabil_preenchido_em_mes2 timestamptz,
+  ADD COLUMN dp_usuario_id_mes2 uuid,
+  ADD COLUMN dp_aprovado_em_mes2 timestamptz,
+  ADD COLUMN fiscal_usuario_id_mes2 uuid,
+  ADD COLUMN fiscal_enviado_em_mes2 timestamptz,
+  ADD COLUMN contabil_usuario_id_mes3 uuid,
+  ADD COLUMN contabil_preenchido_em_mes3 timestamptz,
+  ADD COLUMN dp_usuario_id_mes3 uuid,
+  ADD COLUMN dp_aprovado_em_mes3 timestamptz,
+  ADD COLUMN fiscal_usuario_id_mes3 uuid,
+  ADD COLUMN fiscal_enviado_em_mes3 timestamptz;
+
+-- Migrate existing data from global columns to per-month columns
+UPDATE public.reinf_entries SET
+  status_mes1 = status,
+  status_mes2 = status,
+  status_mes3 = status,
+  contabil_usuario_id_mes1 = contabil_usuario_id,
+  contabil_preenchido_em_mes1 = contabil_preenchido_em,
+  dp_usuario_id_mes1 = dp_usuario_id,
+  dp_aprovado_em_mes1 = dp_aprovado_em,
+  fiscal_usuario_id_mes1 = fiscal_usuario_id,
+  fiscal_enviado_em_mes1 = fiscal_enviado_em,
+  contabil_usuario_id_mes2 = contabil_usuario_id,
+  contabil_preenchido_em_mes2 = contabil_preenchido_em,
+  dp_usuario_id_mes2 = dp_usuario_id,
+  dp_aprovado_em_mes2 = dp_aprovado_em,
+  fiscal_usuario_id_mes2 = fiscal_usuario_id,
+  fiscal_enviado_em_mes2 = fiscal_enviado_em,
+  contabil_usuario_id_mes3 = contabil_usuario_id,
+  contabil_preenchido_em_mes3 = contabil_preenchido_em,
+  dp_usuario_id_mes3 = dp_usuario_id,
+  dp_aprovado_em_mes3 = dp_aprovado_em,
+  fiscal_usuario_id_mes3 = fiscal_usuario_id,
+  fiscal_enviado_em_mes3 = fiscal_enviado_em;
