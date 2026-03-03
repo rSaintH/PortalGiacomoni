@@ -20,11 +20,19 @@ Deno.serve(async (req) => {
     }
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const requestApiKey = req.headers.get("apikey");
+    const supabaseCallerKey = requestApiKey || Deno.env.get("SUPABASE_ANON_KEY");
+
+    if (!supabaseCallerKey) {
+      return new Response(JSON.stringify({ error: "Configuracao invalida da funcao (caller key ausente)" }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
     // Verify caller is admin
-    const callerClient = createClient(supabaseUrl, supabaseAnonKey, {
+    const callerClient = createClient(supabaseUrl, supabaseCallerKey, {
       global: { headers: { Authorization: authHeader } },
     });
 

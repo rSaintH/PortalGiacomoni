@@ -5,6 +5,7 @@ import { useAuth } from "@/lib/auth";
 import { useClients, usePermissionSettings } from "@/hooks/useSupabaseQuery";
 import { fetchAllActiveDocumentTypes, fetchAllDocumentMonthlyStatus } from "@/services/documents.service";
 import { fetchFiscalSyncByMonth, fetchFiscalSyncCnpjBase, fetchFatorSyncCursor, runFatorFiscalPull } from "@/services/accounting.service";
+import { canAccessAccountingReady, isSupervisorRole } from "@/services/permissions.logic";
 import {
   buildClientAccountingInfos,
   filterClientInfos,
@@ -103,18 +104,19 @@ export default function AccountingReady() {
   const { data: permissions } = usePermissionSettings();
 
   const hasAccess = useMemo(() => {
-    if (isAdmin) return true;
-    if (userRole === "supervisao" || userRole === "supervisão") return true;
-    const perm: any = permissions?.find((p: any) => p.key === "view_accounting_ready");
-    if (!perm) return true;
-    if (perm.allowed_sectors && perm.allowed_sectors.length > 0) {
-      return userSectorId ? perm.allowed_sectors.includes(userSectorId) : false;
-    }
-    return true;
+    return canAccessAccountingReady(isAdmin, userRole, userSectorId, permissions as any);
   }, [isAdmin, userRole, permissions, userSectorId]);
 
   const { data: clients, isLoading: loadingClients } = useClients();
 
+  const waitingPermissions = !permissions && !isAdmin && !isSupervisorRole(userRole);
+  if (waitingPermissions) {
+    return (
+      <div className="flex items-center justify-center py-16">
+        <div className="animate-spin h-6 w-6 border-2 border-primary border-t-transparent rounded-full" />
+      </div>
+    );
+  }
   if (permissions && !hasAccess) return <Navigate to="/" replace />;
 
   const [currentDate, setCurrentDate] = useState(() => {

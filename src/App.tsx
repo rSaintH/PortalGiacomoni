@@ -23,6 +23,8 @@ const Documents = lazy(() => import("@/pages/Documents"));
 const AccountingReady = lazy(() => import("@/pages/AccountingReady"));
 const Management = lazy(() => import("@/pages/Management"));
 const Customization = lazy(() => import("@/pages/Customization"));
+const ExportData = lazy(() => import("@/pages/ExportData"));
+const ImportData = lazy(() => import("@/pages/ImportData"));
 const NotFound = lazy(() => import("@/pages/NotFound"));
 
 const queryClient = new QueryClient();
@@ -88,6 +90,8 @@ const App = () => (
               <Route path="/admin" element={<ProtectedRoute><Admin /></ProtectedRoute>} />
               <Route path="/pops/:popId" element={<ProtectedRoute><PopView /></ProtectedRoute>} />
               <Route path="/customization" element={<ProtectedRoute><Customization /></ProtectedRoute>} />
+              <Route path="/export-data" element={<ProtectedRoute><ExportData /></ProtectedRoute>} />
+              <Route path="/import-data" element={<ProtectedRoute><ImportData /></ProtectedRoute>} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </Suspense>

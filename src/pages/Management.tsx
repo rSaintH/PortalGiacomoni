@@ -16,6 +16,7 @@ import {
 import { Search, ChevronLeft, ChevronRight, Plus, Minus, Filter } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { toggleManagementReview } from "@/services/management.service";
+import { canAccessManagement } from "@/services/permissions.logic";
 import {
   monthNamesShort,
   formatYearMonth,
@@ -38,16 +39,20 @@ export default function Management() {
 
   // Permission check
   const hasAccess = useMemo(() => {
-    if (isAdmin) return true;
-    const perm = permissions?.find((p: any) => p.key === "view_management");
-    if (!perm) return true;
-    return (perm.allowed_roles || []).includes(userRole);
+    return canAccessManagement(isAdmin, userRole, permissions as any);
   }, [isAdmin, permissions, userRole]);
 
   const { data: clients, isLoading: loadingClients } = useClients();
   const { data: profiles } = useProfiles();
   const { data: config } = useManagementConfig();
 
+  if (!permissions && !isAdmin) {
+    return (
+      <div className="flex items-center justify-center py-16">
+        <div className="animate-spin h-6 w-6 border-2 border-primary border-t-transparent rounded-full" />
+      </div>
+    );
+  }
   if (permissions && !hasAccess) return <Navigate to="/" replace />;
 
   const [search, setSearch] = useState("");

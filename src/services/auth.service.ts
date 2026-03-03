@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { Session } from "@supabase/supabase-js";
+import { normalizeRole } from "@/services/permissions.logic";
 
 // ── Types ──
 
@@ -37,7 +38,7 @@ export async function fetchUserRole(userId: string): Promise<UserRoleInfo> {
     .select("role")
     .eq("user_id", userId)
     .maybeSingle();
-  const role = data?.role || "colaborador";
+  const role = normalizeRole(data?.role);
   return { role, isAdmin: role === "admin" };
 }
 
@@ -80,8 +81,28 @@ export async function signUp(email: string, password: string, fullName: string):
     const { data, error: fnError } = await supabase.functions.invoke("register-user", {
       body: { email, password, full_name: fullName },
     });
-    if (fnError) return { error: new Error(fnError.message || "Erro ao criar conta") };
-    if (data?.error) return { error: new Error(data.error) };
+    const dataError = data && typeof data === "object" && "error" in data ? (data as { error?: string }).error : undefined;
+    let contextError: string | undefined;
+    if (fnError && typeof fnError === "object" && "context" in fnError) {
+      const maybeContext = (fnError as { context?: unknown }).context;
+      if (maybeContext && typeof maybeContext === "object" && "json" in maybeContext) {
+        const jsonFn = (maybeContext as { json?: unknown }).json;
+        if (typeof jsonFn === "function") {
+          try {
+            const body = await (jsonFn as () => Promise<unknown>)();
+            if (body && typeof body === "object" && "error" in body) {
+              contextError = (body as { error?: string }).error;
+            }
+          } catch {
+            // Ignore context parse errors and fallback to generic message.
+          }
+        }
+      }
+    }
+
+    if (fnError || dataError) {
+      return { error: new Error(dataError || contextError || fnError?.message || "Erro ao criar conta") };
+    }
     return { error: null };
   } catch (e: unknown) {
     const message = e instanceof Error ? e.message : "Erro ao criar conta";

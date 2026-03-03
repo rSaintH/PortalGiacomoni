@@ -1,4 +1,47 @@
 import { supabase } from "@/integrations/supabase/client";
+import { normalizeRole } from "@/services/permissions.logic";
+
+const ALLOWED_ROLES = new Set(["admin", "supervisao", "colaborador"]);
+
+function toAllowedRole(role: string): string {
+  const normalized = normalizeRole(role);
+  if (!ALLOWED_ROLES.has(normalized)) {
+    throw new Error(`Cargo invalido: ${role}`);
+  }
+  return normalized;
+}
+
+async function getFunctionErrorMessage(response: { data: unknown; error: unknown }, fallback: string): Promise<string> {
+  const dataError =
+    response.data && typeof response.data === "object" && "error" in response.data
+      ? (response.data as { error?: string }).error
+      : undefined;
+
+  let contextError: string | undefined;
+  if (response.error && typeof response.error === "object" && "context" in response.error) {
+    const maybeContext = (response.error as { context?: unknown }).context;
+    if (maybeContext && typeof maybeContext === "object" && "json" in maybeContext) {
+      const jsonFn = (maybeContext as { json?: unknown }).json;
+      if (typeof jsonFn === "function") {
+        try {
+          const body = await (jsonFn as () => Promise<unknown>)();
+          if (body && typeof body === "object" && "error" in body) {
+            contextError = (body as { error?: string }).error;
+          }
+        } catch {
+          // Ignore context parse errors and fallback to generic message.
+        }
+      }
+    }
+  }
+
+  const genericError =
+    response.error && typeof response.error === "object" && "message" in response.error
+      ? ((response.error as { message?: string }).message ?? undefined)
+      : undefined;
+
+  return dataError || contextError || genericError || fallback;
+}
 
 export async function createSector(name: string, userId?: string) {
   const { error } = await supabase.from("sectors").insert({
@@ -30,10 +73,11 @@ export async function createSectorStyle(name: string, sectorId: string, userId?:
 }
 
 export async function replaceUserRole(userId: string, role: string) {
+  const normalizedRole = toAllowedRole(role);
   const { error: deleteError } = await supabase.from("user_roles").delete().eq("user_id", userId);
   if (deleteError) throw deleteError;
 
-  const { error: insertError } = await supabase.from("user_roles").insert({ user_id: userId, role });
+  const { error: insertError } = await supabase.from("user_roles").insert({ user_id: userId, role: normalizedRole });
   if (insertError) throw insertError;
 }
 
@@ -53,8 +97,9 @@ export async function updateUserFunction(payload: {
     },
   });
 
-  if (response.error) throw new Error(response.error.message);
-  if (response.data?.error) throw new Error(response.data.error);
+  if (response.error || (response.data && typeof response.data === "object" && "error" in response.data)) {
+    throw new Error(await getFunctionErrorMessage(response, "Erro ao atualizar usuario"));
+  }
 }
 
 export async function createUserWithRole(payload: {
@@ -64,6 +109,7 @@ export async function createUserWithRole(payload: {
   sectorId: string | null;
   role: string;
 }) {
+  const normalizedRole = toAllowedRole(payload.role);
   const response = await supabase.functions.invoke("create-user", {
     body: {
       email: payload.email,
@@ -73,12 +119,13 @@ export async function createUserWithRole(payload: {
     },
   });
 
-  if (response.error) throw new Error(response.error.message || "Erro ao criar usuario");
-  if (response.data?.error) throw new Error(response.data.error);
+  if (response.error || (response.data && typeof response.data === "object" && "error" in response.data)) {
+    throw new Error(await getFunctionErrorMessage(response, "Erro ao criar usuario"));
+  }
 
   const userId = response.data?.user?.id as string | undefined;
   if (userId) {
-    const { error } = await supabase.from("user_roles").insert({ user_id: userId, role: payload.role });
+    const { error } = await supabase.from("user_roles").insert({ user_id: userId, role: normalizedRole });
     if (error) throw error;
   }
 }

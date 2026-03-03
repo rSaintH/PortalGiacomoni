@@ -2,7 +2,7 @@ import { ReactNode, useState, useMemo } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "@/lib/auth";
 import { usePermissionSettings } from "@/hooks/useSupabaseQuery";
-import { isSupervisorRole, canAccessAdmin as checkCanAccessAdmin, isNavItemVisible } from "@/services/permissions.logic";
+import { canAccessAdmin as checkCanAccessAdmin, isNavItemVisible } from "@/services/permissions.logic";
 import { useTheme } from "@/contexts/ThemeContext";
 import {
   Building2,
@@ -69,7 +69,6 @@ export default function AppLayout({ children }: { children: ReactNode }) {
     ? [{ path: "/customization", label: "Customização", icon: Sparkles, permKey: null }]
     : [];
 
-  const isSupervisor = isSupervisorRole(userRole);
   const hasAdminAccess = checkCanAccessAdmin(isAdmin, userRole);
 
   // Filter nav items by permission settings

@@ -30,6 +30,7 @@ import {
 } from "lucide-react";
 import { format, isPast, isToday } from "date-fns";
 import { fetchAllActiveDocumentTypes, fetchAllDocumentMonthlyStatus } from "@/services/documents.service";
+import { canSeeDashboard as checkCanSeeDashboard } from "@/services/permissions.logic";
 import {
   getGreeting,
   formatYearMonth,
@@ -300,8 +301,7 @@ export default function Index() {
   const { user, isAdmin, userRole, userSectorId } = useAuth();
   const { data: profiles } = useProfiles();
 
-  const isSupervisor = userRole === "supervisao" || userRole === "supervisão";
-  const canSeeDashboard = isAdmin || isSupervisor;
+  const canSeeDashboard = checkCanSeeDashboard(isAdmin, userRole);
 
   // Get user's full name from profiles
   const userName = useMemo(() => {
