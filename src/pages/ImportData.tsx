@@ -1,236 +1,110 @@
-import { useState, useRef } from "react";
-import { useAuth } from "@/lib/auth";
+import { useMemo, useRef, useState } from "react";
 import { Navigate } from "react-router-dom";
+import { CheckCircle2, Copy, Download, FileJson } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { FileJson, Download, Copy, CheckCircle2 } from "lucide-react";
-
-const INSERT_ORDER = [
-  "sectors",
-  "sections",
-  "profiles",
-  "user_roles",
-  "tags",
-  "parameter_options",
-  "regime_period_config",
-  "clients",
-  "client_particularities",
-  "client_tags",
-  "client_partners",
-  "client_favorites",
-  "sector_styles",
-  "client_sector_styles",
-  "pops",
-  "pop_revisions",
-  "pop_versions",
-  "client_pop_notes",
-  "tasks",
-  "task_comments",
-  "occurrences",
-  "occurrence_comments",
-  "reinf_entries",
-  "reinf_logs",
-  "reinf_partner_profits",
-  "document_types",
-  "document_monthly_status",
-  "document_report_logs",
-  "doc_tags",
-  "document_type_doc_tags",
-  "permission_settings",
-  "management_config",
-  "management_reviews",
-  "user_palettes",
-  "fator_r_fiscal_sync",
-  "fator_r_sync_cursor",
-  "fator_r_pull_config",
-];
-
-// Colunas geradas que não devem ser inseridas
-const GENERATED_COLUMNS: Record<string, string[]> = {
-  fator_r_fiscal_sync: ["cnpj_digits"],
-  management_config: ["id"],
-};
-
-function escapeSQL(val: unknown): string {
-  if (val === null || val === undefined) return "NULL";
-  if (typeof val === "boolean") return val ? "true" : "false";
-  if (typeof val === "number") return String(val);
-  if (Array.isArray(val)) {
-    // PostgreSQL array literal
-    const items = val.map((v) => {
-      if (v === null || v === undefined) return "NULL";
-      return `"${String(v).replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`;
-    });
-    return `'{${items.join(",")}}'`;
-  }
-  if (typeof val === "object") {
-    // JSONB
-    return `'${JSON.stringify(val).replace(/'/g, "''")}'::jsonb`;
-  }
-  // String
-  return `'${String(val).replace(/'/g, "''")}'`;
-}
-
-// FKs que apontam para auth.users (precisam ser dropadas temporariamente)
-const AUTH_USER_FKS: { table: string; constraint: string; column: string }[] = [
-  { table: "user_roles", constraint: "user_roles_user_id_fkey", column: "user_id" },
-  { table: "profiles", constraint: "profiles_user_id_fkey", column: "user_id" },
-  { table: "sectors", constraint: "sectors_created_by_fkey", column: "created_by" },
-  { table: "sectors", constraint: "sectors_updated_by_fkey", column: "updated_by" },
-  { table: "sections", constraint: "sections_created_by_fkey", column: "created_by" },
-  { table: "sections", constraint: "sections_updated_by_fkey", column: "updated_by" },
-  { table: "clients", constraint: "clients_created_by_fkey", column: "created_by" },
-  { table: "clients", constraint: "clients_updated_by_fkey", column: "updated_by" },
-  { table: "client_particularities", constraint: "client_particularities_created_by_fkey", column: "created_by" },
-  { table: "client_particularities", constraint: "client_particularities_updated_by_fkey", column: "updated_by" },
-  { table: "pops", constraint: "pops_created_by_fkey", column: "created_by" },
-  { table: "pops", constraint: "pops_updated_by_fkey", column: "updated_by" },
-  { table: "pop_revisions", constraint: "pop_revisions_created_by_fkey", column: "created_by" },
-  { table: "pop_revisions", constraint: "pop_revisions_reviewer_id_fkey", column: "reviewer_id" },
-  { table: "tasks", constraint: "tasks_created_by_fkey", column: "created_by" },
-  { table: "tasks", constraint: "tasks_updated_by_fkey", column: "updated_by" },
-  { table: "tasks", constraint: "tasks_assignee_id_fkey", column: "assignee_id" },
-  { table: "task_comments", constraint: "task_comments_created_by_fkey", column: "created_by" },
-  { table: "occurrences", constraint: "occurrences_created_by_fkey", column: "created_by" },
-  { table: "document_types", constraint: "document_types_created_by_fkey", column: "created_by" },
-  { table: "document_types", constraint: "document_types_updated_by_fkey", column: "updated_by" },
-  { table: "document_monthly_status", constraint: "document_monthly_status_updated_by_fkey", column: "updated_by" },
-  { table: "document_report_logs", constraint: "document_report_logs_generated_by_fkey", column: "generated_by" },
-  { table: "doc_tags", constraint: "doc_tags_created_by_fkey", column: "created_by" },
-  { table: "doc_tags", constraint: "doc_tags_updated_by_fkey", column: "updated_by" },
-  { table: "user_palettes", constraint: "user_palettes_user_id_fkey", column: "user_id" },
-  { table: "client_favorites", constraint: "client_favorites_user_id_fkey", column: "user_id" },
-  { table: "management_config", constraint: "management_config_user_id_fkey", column: "user_id" },
-  { table: "management_config", constraint: "management_config_updated_by_fkey", column: "updated_by" },
-  { table: "management_reviews", constraint: "management_reviews_reviewed_by_fkey", column: "reviewed_by" },
-  { table: "permission_settings", constraint: "permission_settings_updated_by_fkey", column: "updated_by" },
-  { table: "fator_r_pull_config", constraint: "fator_r_pull_config_updated_by_fkey", column: "updated_by" },
-];
-
-function generateSQL(data: Record<string, unknown[]>): string {
-  const lines: string[] = [];
-
-  lines.push("-- ==============================================");
-  lines.push("-- IMPORTAÇÃO DE DADOS - Portal Giacomoni");
-  lines.push("-- Gerado em " + new Date().toISOString());
-  lines.push("-- ==============================================");
-  lines.push("");
-  lines.push("-- Desabilitar triggers de usuario (updated_at etc)");
-  lines.push("SET session_replication_role = 'replica';");
-  lines.push("");
-  lines.push("-- Dropar FKs que apontam para auth.users (serao recriadas no final)");
-  for (const fk of AUTH_USER_FKS) {
-    lines.push(`ALTER TABLE IF EXISTS public.${fk.table} DROP CONSTRAINT IF EXISTS ${fk.constraint};`);
-  }
-  lines.push("");
-
-  // Criar usuarios em auth.users com os mesmos UUIDs
-  const profiles = data["profiles"] as Record<string, unknown>[] | undefined;
-  if (profiles && profiles.length > 0) {
-    lines.push("-- =============================================");
-    lines.push("-- CRIAR USUARIOS EM auth.users COM MESMOS UUIDs");
-    lines.push("-- =============================================");
-    lines.push("");
-    for (const profile of profiles) {
-      const userId = profile.user_id as string;
-      const email = (profile.email as string) || `user_${userId.slice(0, 8)}@imported.local`;
-      const fullName = (profile.full_name as string) || "Usuário Importado";
-      // Senha temporária - todos os usuarios importados devem trocar a senha
-      lines.push(
-        `INSERT INTO auth.users (id, instance_id, aud, role, email, encrypted_password, email_confirmed_at, created_at, updated_at, confirmation_token, recovery_token, email_change_token_new, email_change_token_current)` +
-        ` VALUES (${escapeSQL(userId)}, '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', ${escapeSQL(email)}, crypt('TrocarSenha123!', gen_salt('bf')), now(), now(), now(), '', '', '', '')` +
-        ` ON CONFLICT (id) DO NOTHING;`
-      );
-    }
-    lines.push("");
-    // Criar identities para que o login funcione
-    lines.push("-- Criar identities para login por email");
-    for (const profile of profiles) {
-      const userId = profile.user_id as string;
-      const email = (profile.email as string) || `user_${userId.slice(0, 8)}@imported.local`;
-      lines.push(
-        `INSERT INTO auth.identities (id, user_id, provider_id, provider, identity_data, last_sign_in_at, created_at, updated_at)` +
-        ` VALUES (gen_random_uuid(), ${escapeSQL(userId)}, ${escapeSQL(userId)}, 'email', jsonb_build_object('sub', ${escapeSQL(userId)}, 'email', ${escapeSQL(email)}), now(), now(), now())` +
-        ` ON CONFLICT DO NOTHING;`
-      );
-    }
-    lines.push("");
-  }
-
-  const allTables = [
-    ...INSERT_ORDER,
-    ...Object.keys(data).filter((t) => !INSERT_ORDER.includes(t)),
-  ];
-
-  for (const table of allTables) {
-    const rows = data[table];
-    if (!rows || rows.length === 0) continue;
-
-    const skipCols = GENERATED_COLUMNS[table] || [];
-
-    lines.push(`-- ${table} (${rows.length} registros)`);
-
-    for (const row of rows) {
-      const obj = row as Record<string, unknown>;
-      const cols = Object.keys(obj).filter((c) => !skipCols.includes(c));
-      const vals = cols.map((c) => escapeSQL(obj[c]));
-      lines.push(
-        `INSERT INTO public.${table} (${cols.join(", ")}) VALUES (${vals.join(", ")}) ON CONFLICT DO NOTHING;`
-      );
-    }
-
-    lines.push("");
-  }
-
-  lines.push("-- Recriar FKs para auth.users");
-  for (const fk of AUTH_USER_FKS) {
-    lines.push(
-      `DO $$ BEGIN ALTER TABLE public.${fk.table} ADD CONSTRAINT ${fk.constraint} FOREIGN KEY (${fk.column}) REFERENCES auth.users(id) ON DELETE CASCADE; EXCEPTION WHEN duplicate_object THEN NULL; END $$;`
-    );
-  }
-  lines.push("");
-  lines.push("SET session_replication_role = 'origin';");
-  lines.push("");
-  lines.push("-- FIM");
-
-  return lines.join("\n");
-}
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+import { useAuth } from "@/lib/auth";
+import {
+  generateImportSqlLegacy,
+  generateImportSqlWithExistingUsers,
+  parseUsersRowsJson,
+  type ExportDataMap,
+  type MappingReport,
+  type UsersRow,
+} from "@/services/import.logic";
 
 export default function ImportData() {
   const { isAdmin } = useAuth();
-  const fileRef = useRef<HTMLInputElement>(null);
 
-  const [jsonData, setJsonData] = useState<Record<string, unknown[]> | null>(null);
-  const [fileName, setFileName] = useState("");
-  const [sqlGenerated, setSqlGenerated] = useState("");
+  const exportFileRef = useRef<HTMLInputElement>(null);
+  const usersFileRef = useRef<HTMLInputElement>(null);
+
+  const [exportData, setExportData] = useState<ExportDataMap | null>(null);
+  const [usersRows, setUsersRows] = useState<UsersRow[] | null>(null);
+  const [exportFileName, setExportFileName] = useState("");
+  const [usersFileName, setUsersFileName] = useState("");
+  const [generatedSql, setGeneratedSql] = useState("");
   const [copied, setCopied] = useState(false);
+  const [useExistingUsers, setUseExistingUsers] = useState(true);
+  const [fallbackEmail, setFallbackEmail] = useState("backup@giacomoni.com.br");
+  const [mappingReport, setMappingReport] = useState<MappingReport | null>(null);
 
   if (!isAdmin) return <Navigate to="/" replace />;
 
-  const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const canGenerate = useMemo(() => {
+    if (!exportData) return false;
+    if (!useExistingUsers) return true;
+    return Boolean(usersRows && usersRows.length > 0 && fallbackEmail.trim());
+  }, [exportData, useExistingUsers, usersRows, fallbackEmail]);
+
+  const handleExportFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    setFileName(file.name);
-    setSqlGenerated("");
+
+    setExportFileName(file.name);
+    setGeneratedSql("");
+    setMappingReport(null);
+
     const reader = new FileReader();
-    reader.onload = (ev) => {
+    reader.onload = (event) => {
       try {
-        const parsed = JSON.parse(ev.target?.result as string);
-        setJsonData(parsed);
+        const parsed = JSON.parse(String(event.target?.result || "{}")) as ExportDataMap;
+        setExportData(parsed);
       } catch {
-        alert("Arquivo JSON inválido!");
+        alert("Arquivo de exportacao JSON invalido.");
       }
     };
     reader.readAsText(file);
   };
 
-  const generate = () => {
-    if (!jsonData) return;
-    const sql = generateSQL(jsonData);
-    setSqlGenerated(sql);
+  const handleUsersFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUsersFileName(file.name);
+    setGeneratedSql("");
+    setMappingReport(null);
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const parsed = JSON.parse(String(event.target?.result || "[]"));
+        const rows = parseUsersRowsJson(parsed);
+        if (!rows.length) {
+          alert("users_rows.json invalido ou vazio.");
+          return;
+        }
+        setUsersRows(rows);
+      } catch {
+        alert("Arquivo users_rows.json invalido.");
+      }
+    };
+    reader.readAsText(file);
+  };
+
+  const generateSql = () => {
+    if (!exportData) return;
+
+    try {
+      if (useExistingUsers) {
+        const rows = usersRows || [];
+        const { sql, report } = generateImportSqlWithExistingUsers(exportData, rows, fallbackEmail);
+        setGeneratedSql(sql);
+        setMappingReport(report);
+      } else {
+        setGeneratedSql(generateImportSqlLegacy(exportData));
+        setMappingReport(null);
+      }
+    } catch (error) {
+      alert(error instanceof Error ? error.message : "Erro ao gerar SQL.");
+    }
   };
 
   const downloadSQL = () => {
-    const blob = new Blob([sqlGenerated], { type: "text/sql" });
+    if (!generatedSql) return;
+    const blob = new Blob([generatedSql], { type: "text/sql" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
@@ -240,88 +114,131 @@ export default function ImportData() {
   };
 
   const copySQL = async () => {
-    await navigator.clipboard.writeText(sqlGenerated);
+    if (!generatedSql) return;
+    await navigator.clipboard.writeText(generatedSql);
     setCopied(true);
     setTimeout(() => setCopied(false), 3000);
   };
 
-  const tableCount = jsonData
-    ? Object.keys(jsonData).filter((t) => (jsonData[t]?.length || 0) > 0).length
+  const tableCount = exportData
+    ? Object.keys(exportData).filter((table) => (exportData[table]?.length || 0) > 0).length
     : 0;
-  const totalRows = jsonData
-    ? Object.values(jsonData).reduce((sum, arr) => sum + (arr?.length || 0), 0)
+  const totalRows = exportData
+    ? Object.values(exportData).reduce((sum, rows) => sum + (rows?.length || 0), 0)
     : 0;
 
   return (
-    <div className="space-y-6 animate-fade-in max-w-3xl mx-auto">
+    <div className="mx-auto max-w-3xl space-y-6 animate-fade-in">
       <h1 className="text-2xl font-bold">Importar Dados no Banco Novo</h1>
 
-      {/* Passo 1: Upload do JSON */}
-      <div className="border rounded-lg p-4 space-y-4">
-        <h2 className="font-semibold text-lg">1. Selecionar JSON exportado</h2>
+      <div className="space-y-4 rounded-lg border p-4">
+        <h2 className="text-lg font-semibold">1. Arquivo exportado</h2>
         <p className="text-sm text-muted-foreground">
-          Selecione o arquivo <code>supabase_export_*.json</code> que você baixou.
+          Selecione o arquivo <code>supabase_export_*.json</code>.
         </p>
-        <div className="flex items-center gap-3">
-          <Button variant="outline" onClick={() => fileRef.current?.click()}>
-            <FileJson className="h-4 w-4 mr-2" />
-            {fileName || "Selecionar arquivo JSON"}
-          </Button>
-          <input ref={fileRef} type="file" accept=".json" onChange={handleFile} className="hidden" />
-        </div>
-        {jsonData && (
+        <Button variant="outline" onClick={() => exportFileRef.current?.click()}>
+          <FileJson className="mr-2 h-4 w-4" />
+          {exportFileName || "Selecionar supabase_export_*.json"}
+        </Button>
+        <input ref={exportFileRef} type="file" accept=".json" onChange={handleExportFile} className="hidden" />
+        {exportData && (
           <p className="text-sm text-green-600">
-            {tableCount} tabelas com dados, {totalRows} registros total.
+            {tableCount} tabelas com dados, {totalRows} registros no total.
           </p>
         )}
       </div>
 
-      {/* Passo 2: Gerar SQL */}
-      <div className="border rounded-lg p-4 space-y-4">
-        <h2 className="font-semibold text-lg">2. Gerar SQL de importação</h2>
-        <Button onClick={generate} disabled={!jsonData}>
-          Gerar SQL
-        </Button>
+      <div className="space-y-4 rounded-lg border p-4">
+        <h2 className="text-lg font-semibold">2. Modo de geracao</h2>
+        <div className="flex items-center space-x-2">
+          <Switch id="existing-users-mode" checked={useExistingUsers} onCheckedChange={setUseExistingUsers} />
+          <Label htmlFor="existing-users-mode">Usar usuarios ja existentes (mapeamento por email)</Label>
+        </div>
 
-        {sqlGenerated && (
-          <div className="space-y-3">
-            <p className="text-sm text-green-600">
-              SQL gerado com {sqlGenerated.split("\n").length} linhas.
-            </p>
-            <div className="flex gap-2">
-              <Button onClick={downloadSQL} variant="outline">
-                <Download className="h-4 w-4 mr-2" /> Baixar arquivo .sql
+        {useExistingUsers ? (
+          <div className="space-y-3 rounded-md bg-muted/40 p-3">
+            <div>
+              <Button variant="outline" onClick={() => usersFileRef.current?.click()}>
+                <FileJson className="mr-2 h-4 w-4" />
+                {usersFileName || "Selecionar users_rows.json"}
               </Button>
-              <Button onClick={copySQL} variant="outline">
-                {copied ? (
-                  <><CheckCircle2 className="h-4 w-4 mr-2 text-green-500" /> Copiado!</>
-                ) : (
-                  <><Copy className="h-4 w-4 mr-2" /> Copiar SQL</>
-                )}
-              </Button>
+              <input ref={usersFileRef} type="file" accept=".json" onChange={handleUsersFile} className="hidden" />
+              {usersRows && (
+                <p className="mt-2 text-sm text-muted-foreground">
+                  {usersRows.length} usuarios carregados.
+                </p>
+              )}
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="fallback-email">Email fallback (quando nao achar match)</Label>
+              <Input
+                id="fallback-email"
+                value={fallbackEmail}
+                onChange={(e) => setFallbackEmail(e.target.value)}
+                placeholder="backup@giacomoni.com.br"
+              />
             </div>
           </div>
+        ) : (
+          <p className="text-sm text-amber-600">
+            Modo legado: recria usuarios em auth.users. Use apenas em banco limpo.
+          </p>
         )}
+
+        <Button onClick={generateSql} disabled={!canGenerate}>
+          Gerar SQL
+        </Button>
       </div>
 
-      {/* Passo 3: Instruções */}
-      {sqlGenerated && (
-        <div className="border rounded-lg p-4 space-y-3 bg-muted/50">
-          <h2 className="font-semibold text-lg">3. Rodar no banco novo</h2>
-          <ol className="text-sm space-y-2 list-decimal list-inside">
-            <li>Abra o <b>Supabase Dashboard</b> do projeto novo</li>
-            <li>Vá em <b>SQL Editor</b> (menu lateral esquerdo)</li>
-            <li>Clique em <b>New Query</b></li>
-            <li>Cole o SQL (ou abra o arquivo .sql baixado)</li>
-            <li>Clique em <b>Run</b></li>
-            <li>Aguarde finalizar - pode demorar dependendo do volume de dados</li>
-          </ol>
-          <p className="text-sm text-muted-foreground mt-2">
-            <b>Nota:</b> O SQL usa <code>ON CONFLICT DO NOTHING</code>, então é seguro rodar mais de uma vez.
-            Os triggers são desabilitados temporariamente para evitar que <code>updated_at</code> seja sobrescrito.
+      {generatedSql && (
+        <div className="space-y-4 rounded-lg border p-4">
+          <h2 className="text-lg font-semibold">3. Rodar no SQL Editor</h2>
+
+          <div className="flex gap-2">
+            <Button onClick={downloadSQL} variant="outline">
+              <Download className="mr-2 h-4 w-4" /> Baixar .sql
+            </Button>
+            <Button onClick={copySQL} variant="outline">
+              {copied ? (
+                <>
+                  <CheckCircle2 className="mr-2 h-4 w-4 text-green-500" />
+                  Copiado!
+                </>
+              ) : (
+                <>
+                  <Copy className="mr-2 h-4 w-4" />
+                  Copiar SQL
+                </>
+              )}
+            </Button>
+          </div>
+
+          {mappingReport && (
+            <div className="rounded-md bg-muted/40 p-3 text-sm">
+              <p>
+                Mapeados por email: <b>{mappingReport.mappedCount}</b>
+              </p>
+              <p>
+                Sem match (fallback): <b>{mappingReport.fallbackCount}</b>
+              </p>
+              {mappingReport.fallbackDetails.length > 0 && (
+                <div className="mt-2 space-y-1 text-muted-foreground">
+                  {mappingReport.fallbackDetails.map((item) => (
+                    <p key={item.oldId}>
+                      {item.email || "(sem email)"} - old id {item.oldId}
+                    </p>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          <p className="text-sm text-muted-foreground">
+            Esse SQL ja inclui bloco para garantir FKs de auth.users no final.
           </p>
         </div>
       )}
     </div>
   );
 }
+

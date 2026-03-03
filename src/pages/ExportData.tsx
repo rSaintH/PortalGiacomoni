@@ -1,7 +1,9 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useAuth } from "@/lib/auth";
 import { Navigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { createClient } from "@supabase/supabase-js";
+import type { Database } from "@/integrations/supabase/types";
 import { Button } from "@/components/ui/button";
 import { Download, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
 
@@ -66,6 +68,32 @@ export default function ExportData() {
   const [counts, setCounts] = useState<Record<string, number>>({});
   const [running, setRunning] = useState(false);
   const [exportedData, setExportedData] = useState<Record<string, unknown[]> | null>(null);
+  const oldSupabaseUrl = import.meta.env.VITE_SUPABASE_OLD_URL as string | undefined;
+  const oldSupabaseServiceRoleKey = import.meta.env.VITE_SUPABASE_OLD_SERVICE_ROLE_KEY as string | undefined;
+  const oldSupabasePublishableKey =
+    (import.meta.env.VITE_SUPABASE_OLD_PUBLISHABLE_KEY as string | undefined) ||
+    (import.meta.env.VITE_SUPABASE_OLD_ANON_KEY as string | undefined);
+  const oldSupabaseKey = oldSupabaseServiceRoleKey || oldSupabasePublishableKey;
+  const isLocalhost =
+    typeof window !== "undefined" &&
+    (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1");
+  const useOldOnLocalhost = Boolean(isLocalhost && oldSupabaseUrl && oldSupabaseKey);
+  const useOldServiceRoleOnLocalhost = Boolean(useOldOnLocalhost && oldSupabaseServiceRoleKey);
+
+  const exportClient = useMemo(() => {
+    if (useOldOnLocalhost && oldSupabaseUrl && oldSupabaseKey) {
+      return createClient<Database>(oldSupabaseUrl, oldSupabaseKey, {
+        auth: {
+          storage: useOldServiceRoleOnLocalhost ? undefined : localStorage,
+          persistSession: !useOldServiceRoleOnLocalhost,
+          autoRefreshToken: !useOldServiceRoleOnLocalhost,
+          detectSessionInUrl: !useOldServiceRoleOnLocalhost,
+        },
+      });
+    }
+
+    return supabase;
+  }, [useOldOnLocalhost, oldSupabaseUrl, oldSupabaseKey, useOldServiceRoleOnLocalhost]);
 
   if (!isAdmin) return <Navigate to="/" replace />;
 
@@ -88,7 +116,7 @@ export default function ExportData() {
         let hasMore = true;
 
         while (hasMore) {
-          const { data, error } = await supabase
+          const { data, error } = await exportClient
             .from(table)
             .select("*")
             .range(from, from + pageSize - 1);
@@ -155,6 +183,14 @@ export default function ExportData() {
       <p className="text-muted-foreground">
         Exporta todos os dados de todas as tabelas como JSON. Você precisa estar logado como admin.
       </p>
+      <p className="text-xs text-muted-foreground">
+        Origem atual: {useOldOnLocalhost ? "banco antigo (somente localhost)" : "banco atual do projeto"}
+      </p>
+      {useOldOnLocalhost && !useOldServiceRoleOnLocalhost && (
+        <p className="text-xs text-amber-600">
+          Atenção: exportando com chave pública do banco antigo. Tabelas com RLS podem sair incompletas.
+        </p>
+      )}
 
       <div className="flex gap-3">
         <Button onClick={exportAll} disabled={running} size="lg">

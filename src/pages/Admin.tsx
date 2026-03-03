@@ -1,8 +1,9 @@
 import { useAuth } from "@/lib/auth";
-import { Navigate } from "react-router-dom";
+import { Link, Navigate } from "react-router-dom";
 import { isSupervisorRole, canAccessAdmin } from "@/services/permissions.logic";
+import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Layers, Users, Palette, Tag, Upload, FileText, Settings2, Shield, ShieldCheck } from "lucide-react";
+import { Layers, Users, Palette, Tag, Upload, FileText, Settings2, Shield, ShieldCheck, Download } from "lucide-react";
 import ParametersAdmin from "@/components/ParametersAdmin";
 import ClientCsvImport from "@/components/ClientCsvImport";
 import SectorsAdmin from "@/components/admin/SectorsAdmin";
@@ -21,7 +22,25 @@ export default function Admin() {
 
   return (
     <div className="space-y-4 animate-fade-in">
-      <h1 className="text-2xl font-bold">Administração</h1>
+      <div className="flex items-center justify-between gap-2">
+        <h1 className="text-2xl font-bold">Administração</h1>
+        {isAdmin && (
+          <div className="flex items-center gap-2">
+            <Button asChild variant="outline" size="sm" className="gap-2">
+              <Link to="/import-data">
+                <Upload className="h-4 w-4" />
+                Importar Dados
+              </Link>
+            </Button>
+            <Button asChild variant="outline" size="sm" className="gap-2">
+              <Link to="/export-data">
+                <Download className="h-4 w-4" />
+                Exportar Dados
+              </Link>
+            </Button>
+          </div>
+        )}
+      </div>
       <Tabs defaultValue="sectors">
         <TabsList>
           <TabsTrigger value="sectors" className="gap-1"><Layers className="h-3 w-3" /> Setores & Seções</TabsTrigger>
