@@ -16,6 +16,8 @@ const ClientDetail = lazy(() => import("@/pages/ClientDetail"));
 const ClientSectorView = lazy(() => import("@/pages/ClientSectorView"));
 const Pops = lazy(() => import("@/pages/Pops"));
 const Tasks = lazy(() => import("@/pages/Tasks"));
+const Occurrences = lazy(() => import("@/pages/Occurrences"));
+const Particularities = lazy(() => import("@/pages/Particularities"));
 const Admin = lazy(() => import("@/pages/Admin"));
 const Reinf = lazy(() => import("@/pages/Reinf"));
 const PopView = lazy(() => import("@/pages/PopView"));
@@ -83,6 +85,8 @@ const App = () => (
               <Route path="/clients/:id/sector/:sectorId" element={<ProtectedRoute><ClientSectorView /></ProtectedRoute>} />
               <Route path="/pops" element={<ProtectedRoute><Pops /></ProtectedRoute>} />
               <Route path="/tasks" element={<ProtectedRoute><Tasks /></ProtectedRoute>} />
+              <Route path="/occurrences" element={<ProtectedRoute><Occurrences /></ProtectedRoute>} />
+              <Route path="/particularities" element={<ProtectedRoute><Particularities /></ProtectedRoute>} />
               <Route path="/reinf" element={<ProtectedRoute><Reinf /></ProtectedRoute>} />
               <Route path="/documents" element={<ProtectedRoute><Documents /></ProtectedRoute>} />
               <Route path="/accounting-ready" element={<ProtectedRoute><AccountingReady /></ProtectedRoute>} />

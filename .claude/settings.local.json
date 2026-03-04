@@ -1,7 +1,10 @@
 {
   "permissions": {
     "allow": [
-      "Bash(xargs grep -l \"PermissionsAdmin\\\\|useSectors\\\\|parameter_options\")"
+      "Bash(xargs grep -l \"PermissionsAdmin\\\\|useSectors\\\\|parameter_options\")",
+      "Bash(sed 's/:.*//')",
+      "Bash(sed 's/.*      //')",
+      "Bash(sed 's/^[[:space:]]*//')"
     ]
   }
 }

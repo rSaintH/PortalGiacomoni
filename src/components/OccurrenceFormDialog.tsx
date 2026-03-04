@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
-import { useSectors, useSections, useParameterOptions } from "@/hooks/useSupabaseQuery";
+import { useSectors, useSections, useParameterOptions, useClients } from "@/hooks/useSupabaseQuery";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
@@ -14,12 +15,11 @@ import {
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import EditorRolesSelector from "@/components/EditorRolesSelector";
-import { createOccurrence } from "@/services/occurrences.service";
 
 interface Props {
   open: boolean;
   onClose: () => void;
-  clientId: string;
+  clientId?: string;
   sectorId?: string;
 }
 
@@ -28,6 +28,8 @@ export default function OccurrenceFormDialog({ open, onClose, clientId, sectorId
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { data: sectors } = useSectors();
+  const { data: clients } = useClients();
+  const [selectedClientId, setSelectedClientId] = useState(clientId || "");
   const [sectorId, setSectorId] = useState(initialSectorId || "");
   const { data: sections } = useSections(sectorId || undefined);
   const { data: occCategories } = useParameterOptions("occurrence_category");
@@ -48,20 +50,21 @@ export default function OccurrenceFormDialog({ open, onClose, clientId, sectorId
     e.preventDefault();
     setSaving(true);
     try {
-      await createOccurrence({
-        clientId,
-        sectorId,
-        sectionId: form.section_id,
+      const { error } = await supabase.from("occurrences").insert({
+        client_id: selectedClientId || null,
+        sector_id: sectorId,
+        section_id: form.section_id || null,
         title: form.title,
-        description: form.description,
+        description: form.description || null,
         category: form.category,
-        occurredAt: form.occurred_at,
-        monetaryValue: form.monetary_value,
-        editorRoles,
-        userId: user?.id,
-      });
+        occurred_at: form.occurred_at || new Date().toISOString(),
+        monetary_value: form.monetary_value ? parseFloat(form.monetary_value) : null,
+        editor_roles: editorRoles,
+        created_by: user?.id,
+      } as any);
+      if (error) throw error;
       queryClient.invalidateQueries({ queryKey: ["occurrences"] });
-      queryClient.invalidateQueries({ queryKey: ["occurrences_with_comments", clientId] });
+      queryClient.invalidateQueries({ queryKey: ["occurrences_with_comments"] });
       toast({ title: "Ocorrência registrada!" });
       onClose();
     } catch (err: any) {
@@ -82,6 +85,19 @@ export default function OccurrenceFormDialog({ open, onClose, clientId, sectorId
             <Label>Título *</Label>
             <Input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} required />
           </div>
+          {!clientId && (
+            <div className="space-y-2">
+              <Label>Cliente</Label>
+              <Select value={selectedClientId} onValueChange={setSelectedClientId}>
+                <SelectTrigger><SelectValue placeholder="Opcional — sem vínculo a cliente" /></SelectTrigger>
+                <SelectContent>
+                  {clients?.map((c: any) => (
+                    <SelectItem key={c.id} value={c.id}>{c.trade_name || c.legal_name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>Setor *</Label>

@@ -3,6 +3,7 @@ import { useAuth } from "@/lib/auth";
 import {
   fetchClientById,
   fetchClientParticularities,
+  fetchAllParticularities,
   fetchClientPopNote,
   fetchClientPops,
   fetchClientSectorStyles,
@@ -77,6 +78,14 @@ export function useClientParticularities(clientId: string) {
     staleTime: STALE_5MIN,
     queryFn: () => fetchClientParticularities(clientId),
     enabled: !!clientId,
+  });
+}
+
+export function useAllParticularities(filters?: { sectorId?: string }) {
+  return useQuery({
+    queryKey: ["all_particularities", filters],
+    staleTime: STALE_5MIN,
+    queryFn: () => fetchAllParticularities(filters),
   });
 }
 

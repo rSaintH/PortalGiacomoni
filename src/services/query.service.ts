@@ -81,6 +81,18 @@ export async function fetchClientParticularities(clientId: string) {
   return data;
 }
 
+export async function fetchAllParticularities(filters?: { sectorId?: string }) {
+  let query = supabase
+    .from("client_particularities")
+    .select("*, sectors(name), sections(name), clients(legal_name, trade_name)")
+    .eq("is_archived", false)
+    .order("created_at", { ascending: false });
+  if (filters?.sectorId) query = query.eq("sector_id", filters.sectorId);
+  const { data, error } = await query;
+  if (error) throw error;
+  return data;
+}
+
 export async function fetchClientPops(clientId: string) {
   const { data, error } = await supabase
     .from("pops")

@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { useTasksWithComments, useSectors, useClients, useParameterOptions } from "@/hooks/useSupabaseQuery";
+import { useOccurrencesWithComments, useSectors, useClients, useParameterOptions } from "@/hooks/useSupabaseQuery";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -10,10 +10,8 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { Plus, Search, FileDown } from "lucide-react";
-import { isPast, isToday } from "date-fns";
-import TaskFormDialog from "@/components/TaskFormDialog";
+import OccurrenceFormDialog from "@/components/OccurrenceFormDialog";
 import ExpandableRecordCard from "@/components/ExpandableRecordCard";
-import { CLOSED_TASK_STATUSES } from "@/lib/constants";
 import { useToast } from "@/hooks/use-toast";
 import {
   fetchRelatorioCompleto,
@@ -21,43 +19,39 @@ import {
   downloadBlob,
 } from "@/services/relatorioPendencias";
 
-export default function Tasks() {
+export default function Occurrences() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const { data: sectors } = useSectors();
   const { data: clients } = useClients();
-  const { data: taskStatuses } = useParameterOptions("task_status");
-  const [generatingPdf, setGeneratingPdf] = useState(false);
+  const { data: occCategories } = useParameterOptions("occurrence_category");
 
-  // Realtime: atualiza pendências quando outro usuário faz mudanças
   useEffect(() => {
     const channel = supabase
-      .channel("tasks-realtime")
-      .on("postgres_changes", { event: "*", schema: "public", table: "tasks" }, () => {
-        queryClient.invalidateQueries({ queryKey: ["tasks"] });
-        queryClient.invalidateQueries({ queryKey: ["tasks_with_comments"] });
-        queryClient.invalidateQueries({ queryKey: ["task_stats"] });
+      .channel("occurrences-realtime")
+      .on("postgres_changes", { event: "*", schema: "public", table: "occurrences" }, () => {
+        queryClient.invalidateQueries({ queryKey: ["occurrences"] });
+        queryClient.invalidateQueries({ queryKey: ["occurrences_with_comments"] });
       })
       .subscribe();
     return () => { supabase.removeChannel(channel); };
   }, [queryClient]);
+
   const [sectorFilter, setSectorFilter] = useState("all");
   const [clientFilter, setClientFilter] = useState("all");
-  const [statusFilter, setStatusFilter] = useState("open");
+  const [categoryFilter, setCategoryFilter] = useState("all");
   const [search, setSearch] = useState("");
   const [showForm, setShowForm] = useState(false);
+  const [generatingPdf, setGeneratingPdf] = useState(false);
 
-  const filters: { sectorId?: string; clientId?: string; status?: string } = {};
-  if (sectorFilter !== "all") filters.sectorId = sectorFilter;
-  if (clientFilter !== "all") filters.clientId = clientFilter;
-  const { data: tasks, isLoading } = useTasksWithComments(filters);
+  const { data: occurrences, isLoading } = useOccurrencesWithComments();
 
-  const filtered = tasks?.filter((t: any) => {
-    const matchSearch = t.title.toLowerCase().includes(search.toLowerCase());
-    if (statusFilter === "open") return matchSearch && !CLOSED_TASK_STATUSES.includes(t.status);
-    if (statusFilter === "closed") return matchSearch && CLOSED_TASK_STATUSES.includes(t.status);
-    if (statusFilter !== "all") return matchSearch && t.status === statusFilter;
-    return matchSearch;
+  const filtered = occurrences?.filter((o: any) => {
+    const matchSearch = o.title.toLowerCase().includes(search.toLowerCase());
+    const matchSector = sectorFilter === "all" || o.sector_id === sectorFilter;
+    const matchClient = clientFilter === "all" || o.client_id === clientFilter;
+    const matchCategory = categoryFilter === "all" || o.category === categoryFilter;
+    return matchSearch && matchSector && matchClient && matchCategory;
   });
 
   const handleGenerateReport = async () => {
@@ -65,19 +59,24 @@ export default function Tasks() {
     try {
       const filtro: any = {};
       if (sectorFilter !== "all") filtro.sectorId = sectorFilter;
+      if (clientFilter !== "all") filtro.clientId = clientFilter;
 
       const sectorName = sectorFilter !== "all"
         ? sectors?.find((s) => s.id === sectorFilter)?.name
         : undefined;
+      const clientName = clientFilter !== "all"
+        ? clients?.find((c: any) => c.id === clientFilter)?.legal_name
+        : undefined;
 
       const relatorio = await fetchRelatorioCompleto(filtro);
       const blob = await gerarRelatorioPdf(relatorio, {
-        titulo: "Relatório de Pendências",
-        incluirOcorrencias: false,
+        titulo: "Relatório de Ocorrências",
+        incluirPendencias: false,
         incluirParticularidades: false,
         nomeSetor: sectorName,
+        nomeCliente: clientName,
       });
-      downloadBlob(blob, `relatorio-pendencias${sectorName ? `-${sectorName}` : ""}.pdf`);
+      downloadBlob(blob, `relatorio-ocorrencias.pdf`);
       toast({ title: "Relatório gerado com sucesso!" });
     } catch (err: any) {
       toast({ title: "Erro ao gerar relatório", description: err.message, variant: "destructive" });
@@ -89,7 +88,7 @@ export default function Tasks() {
   return (
     <div className="space-y-4 animate-fade-in">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Pendências</h1>
+        <h1 className="text-2xl font-bold">Ocorrências</h1>
         <div className="flex items-center gap-2">
           <Button
             size="sm"
@@ -104,7 +103,7 @@ export default function Tasks() {
             size="sm"
             onClick={() => setShowForm(true)}
           >
-            <Plus className="h-4 w-4 mr-1" /> Nova pendência
+            <Plus className="h-4 w-4 mr-1" /> Nova ocorrência
           </Button>
         </div>
       </div>
@@ -128,14 +127,12 @@ export default function Tasks() {
             {clients?.map((c: any) => <SelectItem key={c.id} value={c.id}>{c.trade_name || c.legal_name}</SelectItem>)}
           </SelectContent>
         </Select>
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-44"><SelectValue placeholder="Status" /></SelectTrigger>
+        <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+          <SelectTrigger className="w-44"><SelectValue placeholder="Categoria" /></SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">Todos</SelectItem>
-            <SelectItem value="open">Pendentes</SelectItem>
-            <SelectItem value="closed">Concluídos</SelectItem>
-            {(taskStatuses || []).map((s: any) => (
-              <SelectItem key={s.id} value={s.value}>{s.value}</SelectItem>
+            <SelectItem value="all">Todas categorias</SelectItem>
+            {(occCategories || []).map((c: any) => (
+              <SelectItem key={c.id} value={c.value}>{c.value}</SelectItem>
             ))}
           </SelectContent>
         </Select>
@@ -148,47 +145,41 @@ export default function Tasks() {
       ) : filtered?.length === 0 ? (
         <Card>
           <CardContent className="py-12 text-center text-muted-foreground">
-            Nenhuma pendência encontrada.
+            Nenhuma ocorrência encontrada.
           </CardContent>
         </Card>
       ) : (
         <div className="space-y-2">
-          {filtered?.map((task: any) => {
-            const overdue = task.due_date && isPast(new Date(task.due_date)) && !isToday(new Date(task.due_date)) && !CLOSED_TASK_STATUSES.includes(task.status as any);
-            return (
-              <ExpandableRecordCard
-                key={task.id}
-                id={task.id}
-                title={task.title}
-                description={task.description}
-                createdAt={task.created_at}
-                creatorName={task.profiles?.full_name || task.profiles?.email}
-                date={task.due_date}
-                dateLabel={overdue ? "Vencida" : "Vence"}
-                monetaryValue={task.monetary_value}
-                status={task.status}
-                priority={task.priority}
-                overdue={overdue}
-                comments={task.comments || []}
-                commentTable="task_comments"
-                commentForeignKey="task_id"
-                queryKey={["tasks_with_comments", filters]}
-                tableName="tasks"
-                badges={
-                  <>
-                    {task.clients && <Badge variant="outline" className="text-xs">{task.clients?.trade_name || task.clients?.legal_name}</Badge>}
-                    <Badge variant="outline" className="text-xs">{task.sectors?.name}</Badge>
-                    <Badge variant="outline" className="text-xs">{task.type}</Badge>
-                  </>
-                }
-              />
-            );
-          })}
+          {filtered?.map((occ: any) => (
+            <ExpandableRecordCard
+              key={occ.id}
+              id={occ.id}
+              title={occ.title}
+              description={occ.description}
+              createdAt={occ.created_at}
+              creatorName={occ.profiles?.full_name || occ.profiles?.email}
+              date={occ.occurred_at}
+              dateLabel="Ocorrência"
+              monetaryValue={occ.monetary_value}
+              category={occ.category}
+              comments={occ.comments || []}
+              commentTable="occurrence_comments"
+              commentForeignKey="occurrence_id"
+              queryKey={["occurrences_with_comments"]}
+              tableName="occurrences"
+              badges={
+                <>
+                  {occ.clients && <Badge variant="outline" className="text-xs">{occ.clients?.legal_name}</Badge>}
+                  <Badge variant="outline" className="text-xs">{occ.sectors?.name}</Badge>
+                </>
+              }
+            />
+          ))}
         </div>
       )}
 
       {showForm && (
-        <TaskFormDialog open={true} onClose={() => setShowForm(false)} />
+        <OccurrenceFormDialog open={true} onClose={() => setShowForm(false)} />
       )}
     </div>
   );

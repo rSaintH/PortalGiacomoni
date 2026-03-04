@@ -221,7 +221,7 @@ export type Database = {
       }
       client_particularities: {
         Row: {
-          client_id: string
+          client_id: string | null
           created_at: string
           created_by: string
           details: string | null
@@ -236,7 +236,7 @@ export type Database = {
           updated_by: string | null
         }
         Insert: {
-          client_id: string
+          client_id?: string | null
           created_at?: string
           created_by: string
           details?: string | null
@@ -643,7 +643,7 @@ export type Database = {
       occurrences: {
         Row: {
           category: string
-          client_id: string
+          client_id: string | null
           created_at: string
           created_by: string
           description: string | null
@@ -659,7 +659,7 @@ export type Database = {
         }
         Insert: {
           category?: string
-          client_id: string
+          client_id?: string | null
           created_at?: string
           created_by: string
           description?: string | null
@@ -1430,7 +1430,7 @@ export type Database = {
       tasks: {
         Row: {
           assignee_id: string | null
-          client_id: string
+          client_id: string | null
           closed_at: string | null
           created_at: string
           created_by: string
@@ -1451,7 +1451,7 @@ export type Database = {
         }
         Insert: {
           assignee_id?: string | null
-          client_id: string
+          client_id?: string | null
           closed_at?: string | null
           created_at?: string
           created_by: string

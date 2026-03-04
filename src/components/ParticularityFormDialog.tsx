@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
-import { useSectors, useSections } from "@/hooks/useSupabaseQuery";
+import { useSectors, useSections, useClients } from "@/hooks/useSupabaseQuery";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
@@ -13,12 +14,11 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { createClientParticularity } from "@/services/clients.service";
 
 interface Props {
   open: boolean;
   onClose: () => void;
-  clientId: string;
+  clientId?: string;
   sectorId?: string;
 }
 
@@ -27,6 +27,8 @@ export default function ParticularityFormDialog({ open, onClose, clientId, secto
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { data: sectors } = useSectors();
+  const { data: clients } = useClients();
+  const [selectedClientId, setSelectedClientId] = useState(clientId || "");
   const [sectorId, setSectorId] = useState(initialSectorId || "");
   const { data: sections } = useSections(sectorId || undefined);
   const [saving, setSaving] = useState(false);
@@ -42,16 +44,19 @@ export default function ParticularityFormDialog({ open, onClose, clientId, secto
     e.preventDefault();
     setSaving(true);
     try {
-      await createClientParticularity({
-        clientId,
-        sectorId,
-        sectionId: form.section_id,
+      const { error } = await supabase.from("client_particularities").insert({
+        client_id: selectedClientId || null,
+        sector_id: sectorId,
+        section_id: form.section_id || null,
         title: form.title,
-        details: form.details,
+        details: form.details || null,
         priority: form.priority,
-        userId: user?.id,
+        created_by: user?.id,
+        updated_by: user?.id,
       });
-      queryClient.invalidateQueries({ queryKey: ["particularities", clientId] });
+      if (error) throw error;
+      queryClient.invalidateQueries({ queryKey: ["particularities"] });
+      queryClient.invalidateQueries({ queryKey: ["all_particularities"] });
       toast({ title: "Particularidade criada!" });
       onClose();
     } catch (err: any) {
@@ -72,6 +77,19 @@ export default function ParticularityFormDialog({ open, onClose, clientId, secto
             <Label>Título *</Label>
             <Input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} required />
           </div>
+          {!clientId && (
+            <div className="space-y-2">
+              <Label>Cliente</Label>
+              <Select value={selectedClientId} onValueChange={setSelectedClientId}>
+                <SelectTrigger><SelectValue placeholder="Opcional — sem vínculo a cliente" /></SelectTrigger>
+                <SelectContent>
+                  {clients?.map((c: any) => (
+                    <SelectItem key={c.id} value={c.id}>{c.trade_name || c.legal_name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>Setor *</Label>
