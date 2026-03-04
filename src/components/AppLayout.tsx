@@ -45,6 +45,8 @@ const navItems = [
 
 const adminItems = [
   { path: "/admin", label: "Administração", icon: Settings },
+  { path: "/export-data", label: "Exportar dados", icon: Settings },
+  { path: "/import-data", label: "Importar dados", icon: Settings },
 ];
 
 export default function AppLayout({ children }: { children: ReactNode }) {
